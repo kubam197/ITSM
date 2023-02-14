@@ -1,0 +1,77 @@
+﻿using ITSM.Data;
+using ITSM.ViewModels;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
+
+namespace ITSM.Controllers
+{
+    public class HomeController : Controller
+    {
+        private readonly BoardsContext _dbContext;
+
+        public HomeController(BoardsContext dbContext)
+        {
+            _dbContext = dbContext;
+        }
+
+        public IActionResult Index(int? projectId = null)
+        {
+            if(projectId == 0) projectId = null; 
+
+            var currentProject = _dbContext.Projects.FirstOrDefault(x => x.Id == projectId);
+            var workItems = _dbContext.WorkItems.Include(x => x.State).Where(x => x.ProjectId == projectId);
+
+            var itemStates = _dbContext.States.ToList();
+
+            var projects = _dbContext.Projects.ToList();
+            var projectList = new List<SelectListItem>();
+
+            foreach (var project in projects)
+            {
+                var listItem = new SelectListItem()
+                {
+                    Text = project.Name,
+                    Value = project.Id.ToString()
+                };
+
+                projectList.Add(listItem);
+            }
+
+            var kanbanVM = new HomeKanbanViewModel()
+            {
+                Project = currentProject,
+                Projects = projectList,
+                WorkItems = workItems,
+                States = itemStates
+            };
+
+            return View(kanbanVM);
+        }
+
+        [HttpPost]
+        public IActionResult Index(int projectId)
+        {
+            return RedirectToAction(nameof(Index), new { projectId = projectId });
+        }
+
+        public class KanbanRequest
+        {
+            public List<Change> Data { get; set; }
+        }
+
+        public class Change
+        {
+            public string workItem { get; set; }
+            public string toState { get; set; }
+        }
+
+        [HttpPost]
+        public IActionResult ApproveChanges([FromBody] KanbanRequest body)
+        {
+
+            return Ok();
+        }
+
+    }
+}
